@@ -3,16 +3,14 @@
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 
 interface CompanyUpdate {
-  id: string
-  company_name: string
   title: string
   content: string
   source_url: string
-  created_at: string
-  update_type: 'blog' | 'news' | 'developer' | 'release'
+  published_at: string
+  author: string
+  type: 'blog' | 'developer'
 }
 
 const TECH_COMPANIES = [
@@ -47,25 +45,23 @@ const CompaniesPage = () => {
 
   const fetchCompanyUpdates = async () => {
     try {
-      let query = supabase
-        .from('company_updates')
-        .select('*')
-        .order('created_at', { ascending: false })
+      setIsLoading(true)
 
-      if (selectedCompany) {
-        query = query.eq('company_name', selectedCompany)
+      if (selectedCompany === 'Google') {
+        const response = await fetch('/api/company-updates/google')
+        const data = await response.json()
+        
+        if (response.ok) {
+          setUpdates(data.updates)
+        } else {
+          throw new Error(data.error || 'Failed to fetch updates')
+        }
+      } else {
+        setUpdates([])
       }
-
-      const { data, error } = await query
-
-      if (error) {
-        console.error('Error details:', error)
-        throw error
-      }
-
-      setUpdates(data || [])
     } catch (error) {
-      console.error('Error fetching company updates:', error)
+      console.error('Error fetching updates:', error)
+      setUpdates([])
     } finally {
       setIsLoading(false)
     }
@@ -135,23 +131,23 @@ const CompaniesPage = () => {
                 <div className="text-center py-8 bg-[color:var(--sidebar)] rounded-lg border border-[color:var(--border)]">
                   <p className="text-[color:var(--text-secondary)]">No updates available.</p>
                   <p className="text-sm text-[color:var(--text-secondary)] mt-2">
-                    Check back later for company updates!
+                    Select a company to see their latest updates.
                   </p>
                 </div>
               ) : (
-                updates.map((update) => (
+                updates.map((update, index) => (
                   <div
-                    key={update.id}
+                    key={index}
                     className="p-4 bg-[color:var(--sidebar)] rounded-lg border border-[color:var(--border)]"
                   >
                     <div className="flex items-center space-x-3 mb-2">
                       <div className="w-8 h-8 rounded-full bg-[color:var(--hover)] flex items-center justify-center text-sm">
-                        {update.company_name[0]}
+                        G
                       </div>
                       <div>
                         <h3 className="font-medium">{update.title}</h3>
                         <p className="text-sm text-[color:var(--text-secondary)]">
-                          {update.company_name} • {new Date(update.created_at).toLocaleDateString()}
+                          Google • {new Date(update.published_at).toLocaleDateString()} • {update.author}
                         </p>
                       </div>
                     </div>
