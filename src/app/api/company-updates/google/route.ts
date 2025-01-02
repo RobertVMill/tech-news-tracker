@@ -34,12 +34,20 @@ function cleanHtmlContent(html: string | object | undefined): string {
   return preview + (textContent.length > 300 ? '...' : '')
 }
 
+interface StringifiableObject {
+  title?: string;
+  name?: string;
+  text?: string;
+  [key: string]: unknown;
+}
+
 function ensureString(value: string | number | boolean | object | null | undefined): string {
   if (!value) return ''
   if (typeof value === 'string') return value
   if (typeof value === 'object') {
     try {
-      return String(value.title || value.name || value.text || JSON.stringify(value))
+      const obj = value as StringifiableObject
+      return String(obj.title || obj.name || obj.text || JSON.stringify(value))
     } catch {
       return ''
     }
