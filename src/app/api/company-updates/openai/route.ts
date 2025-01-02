@@ -1,49 +1,59 @@
-import Parser from 'rss-parser'
-import { NextResponse } from 'next/server'
+import { NextResponse } from 'next/server';
+import Parser from 'rss-parser';
 
 const parser = new Parser({
-  headers: {
-    'Accept': 'application/rss+xml, application/xml;q=0.9',
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Connection': 'keep-alive',
-    'Cache-Control': 'no-cache',
-    'Upgrade-Insecure-Requests': '1'
+  customFields: {
+    item: ['content:encoded', 'description'] // Add these fields to get full content
   }
-})
+});
+
+function cleanHtmlContent(html: string): string {
+  // Remove HTML tags
+  const textContent = html.replace(/<[^>]+>/g, ' ')
+    // Replace multiple spaces/newlines with single space
+    .replace(/\s+/g, ' ')
+    // Remove special characters and extra whitespace
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .trim();
+
+  // Get first 300 characters for preview
+  const preview = textContent.slice(0, 300);
+  return preview + (textContent.length > 300 ? '...' : '');
+}
 
 export async function GET() {
   try {
-    // Using OpenAI's announcements feed
-    const feed = await parser.parseURL('https://community.openai.com/c/announcements.rss')
+    const feed = await parser.parseURL('https://community.openai.com/c/announcements.rss');
     
-    const updates = feed.items.map(item => ({
-      title: item.title || '',
-      content: item.contentSnippet || item.content || '',
-      source_url: item.link || 'https://community.openai.com/c/announcements',
-      published_at: item.pubDate || item.isoDate || new Date().toISOString(),
-      author: item.creator || 'OpenAI',
-      type: 'blog' as const
-    })).filter(item => item.title && item.content)
+    const updates = feed.items.map(item => {
+      // Get the full content from either content:encoded or description
+      const fullContent = (item['content:encoded'] || item.description || item.content || '').toString();
+      
+      return {
+        title: item.title || '',
+        description: cleanHtmlContent(fullContent),
+        url: item.link || '',
+        published_at: item.pubDate || item.isoDate || new Date().toISOString(),
+        author: item.creator || 'OpenAI'
+      };
+    });
 
     // Sort by date, most recent first
-    updates.sort((a, b) => {
-      const dateA = new Date(a.published_at || new Date())
-      const dateB = new Date(b.published_at || new Date())
-      return dateB.getTime() - dateA.getTime()
-    })
+    const sortedUpdates = updates.sort((a, b) => {
+      const dateA = new Date(a.published_at);
+      const dateB = new Date(b.published_at);
+      return dateB.getTime() - dateA.getTime();
+    });
 
-    if (updates.length === 0) {
-      console.error('No announcements found')
-      return NextResponse.json({ error: 'No updates available' }, { status: 404 })
-    }
-
-    return NextResponse.json({ updates })
+    return NextResponse.json({ updates: sortedUpdates });
   } catch (error) {
-    console.error('Error fetching OpenAI updates:', error)
-    return NextResponse.json({ 
-      error: 'Failed to fetch updates',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    console.error('Error fetching OpenAI updates:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch updates' },
+      { status: 500 }
+    );
   }
 } 
