@@ -48,7 +48,7 @@ const Home = () => {
       if (articles) {
         const articlesWithEmails = articles.map(article => ({
           ...article,
-          user_email: article.user_id === user?.id ? user.email : 'Unknown User'
+          user_email: article.user_id === user?.id ? user?.email || 'Unknown User' : 'Unknown User'
         }))
         setArticles(articlesWithEmails)
       }
@@ -75,7 +75,23 @@ const Home = () => {
   return (
     <div className="min-h-screen">
       <header className="notion-like-header">
-        <h1 className="notion-like-title">Tech News Tracker</h1>
+        <div className="flex items-center space-x-6">
+          <h1 className="notion-like-title">Tech News Tracker</h1>
+          <nav className="flex items-center space-x-4">
+            <button
+              onClick={() => router.push('/')}
+              className={`notion-like-button ${!showUserMenu ? 'text-[color:var(--foreground)]' : ''}`}
+            >
+              Home
+            </button>
+            <button
+              onClick={() => router.push('/companies')}
+              className="notion-like-button"
+            >
+              Company Updates
+            </button>
+          </nav>
+        </div>
         <div className="relative">
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
