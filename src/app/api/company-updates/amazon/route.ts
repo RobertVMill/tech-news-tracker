@@ -5,7 +5,7 @@ const parser = new Parser()
 
 export async function GET() {
   try {
-    const feed = await parser.parseURL('https://blog.aboutamazon.com/feed')
+    const feed = await parser.parseURL('https://press.aboutamazon.com/rss/news-releases.xml')
     
     const updates = feed.items.map(item => ({
       title: item.title || '',
