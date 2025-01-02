@@ -11,10 +11,17 @@ export async function GET() {
       title: item.title || '',
       content: item.contentSnippet || item.content || '',
       source_url: item.link || '',
-      published_at: item.pubDate || '',
+      published_at: item.pubDate || item.isoDate || new Date().toISOString(),
       author: item.creator || 'OpenAI',
-      type: 'blog'
+      type: 'blog' as const
     }))
+
+    // Sort by date, most recent first
+    updates.sort((a, b) => {
+      const dateA = new Date(a.published_at || new Date())
+      const dateB = new Date(b.published_at || new Date())
+      return dateB.getTime() - dateA.getTime()
+    })
 
     return NextResponse.json({ updates })
   } catch (error) {
