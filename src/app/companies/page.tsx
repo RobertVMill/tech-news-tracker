@@ -48,14 +48,16 @@ const CompaniesPage = () => {
     try {
       setIsLoading(true)
 
-      if (selectedCompany === 'Google') {
-        const response = await fetch('/api/company-updates/google')
+      if (selectedCompany) {
+        const companySlug = selectedCompany.toLowerCase()
+        const response = await fetch(`/api/company-updates/${companySlug}`)
         const data = await response.json()
         
         if (response.ok) {
           setUpdates(data.updates)
         } else {
-          throw new Error(data.error || 'Failed to fetch updates')
+          console.error(`Error fetching ${selectedCompany} updates:`, data.error)
+          setUpdates([])
         }
       } else {
         setUpdates([])
