@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 
 const parser = new Parser({
   customFields: {
-    item: ['description', 'pubDate', 'link']
+    item: ['description', 'pubDate', 'link', 'creator', 'author', 'contentSnippet', 'content']
   }
 })
 
@@ -26,7 +26,7 @@ export async function GET() {
         content: item.contentSnippet || item.description || item.content || '',
         source_url: item.link || '',
         published_at: item.pubDate || item.isoDate || new Date().toISOString(),
-        author: item.creator || item.author || 'AWS',
+        author: (item as any).creator || (item as any).author || 'AWS',
         type: 'blog' as const
       }
     }).filter(item => item.title && item.content) // Only include items with title and content
