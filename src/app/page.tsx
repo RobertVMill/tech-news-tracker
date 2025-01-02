@@ -5,10 +5,21 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
+interface Article {
+  id: string
+  title: string
+  content: string
+  created_at: string
+  user_id: string
+  user_email: string
+}
+
 const Home = () => {
   const { user, loading } = useAuth()
   const router = useRouter()
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [articles, setArticles] = useState<Article[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -16,12 +27,44 @@ const Home = () => {
     }
   }, [user, loading, router])
 
+  useEffect(() => {
+    if (user) {
+      fetchAllArticles()
+    }
+  }, [user])
+
+  const fetchAllArticles = async () => {
+    try {
+      const { data: articles, error } = await supabase
+        .from('articles')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Supabase error details:', error)
+        throw error
+      }
+
+      if (articles) {
+        const articlesWithEmails = articles.map(article => ({
+          ...article,
+          user_email: article.user_id === user?.id ? user.email : 'Unknown User'
+        }))
+        setArticles(articlesWithEmails)
+      }
+    } catch (error) {
+      console.error('Error fetching articles:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     router.push('/auth')
   }
 
-  if (loading) {
+  if (loading || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-[color:var(--text-secondary)]">Loading...</div>
@@ -68,13 +111,45 @@ const Home = () => {
       </header>
       <main className="notion-like-container py-8">
         <div className="space-y-6">
-          <div className="text-[color:var(--text-secondary)]">
-            Welcome back, {user?.email}
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-semibold">Latest Tech News</h2>
+            <button
+              onClick={() => router.push('/profile')}
+              className="notion-like-button notion-like-button-primary"
+            >
+              Write Article
+            </button>
           </div>
-          <div className="prose prose-sm">
-            <p className="text-[color:var(--text-secondary)]">
-              Your personal tech news dashboard
-            </p>
+
+          <div className="space-y-4">
+            {articles.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-[color:var(--text-secondary)]">No articles yet.</p>
+                <p className="text-sm text-[color:var(--text-secondary)] mt-2">
+                  Be the first to share some tech news!
+                </p>
+              </div>
+            ) : (
+              articles.map((article) => (
+                <div
+                  key={article.id}
+                  className="p-4 border border-[color:var(--border)] rounded-md hover:bg-[color:var(--hover)] transition-colors"
+                >
+                  <div className="flex items-center space-x-3 mb-2">
+                    <div className="w-8 h-8 rounded-full bg-[color:var(--hover)] flex items-center justify-center text-sm">
+                      {article.user_email[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <h3 className="font-medium">{article.title}</h3>
+                      <p className="text-sm text-[color:var(--text-secondary)]">
+                        {new Date(article.created_at).toLocaleDateString()} • {article.user_email}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-sm line-clamp-3 ml-11">{article.content}</p>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </main>
