@@ -54,7 +54,7 @@ export default function UpdatesList() {
           setUpdates([]);
         }
       } catch (err) {
-        setError('Failed to fetch updates');
+        setError(`Failed to fetch updates: ${err instanceof Error ? err.message : 'Unknown error'}`);
         setUpdates([]);
       } finally {
         setIsLoading(false);

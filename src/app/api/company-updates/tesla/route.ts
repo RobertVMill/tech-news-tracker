@@ -38,7 +38,7 @@ function cleanHtmlContent(html: string | object | undefined): string {
   return preview + (textContent.length > 300 ? '...' : '');
 }
 
-function ensureString(value: any): string {
+function ensureString(value: string | number | boolean | object | null | undefined): string {
   if (!value) return '';
   if (typeof value === 'string') return value;
   if (typeof value === 'object') {
