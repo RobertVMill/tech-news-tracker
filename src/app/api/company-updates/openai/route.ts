@@ -1,36 +1,46 @@
-import Parser from 'rss-parser'
 import { NextResponse } from 'next/server'
-
-const parser = new Parser({
-  customFields: {
-    item: ['description', 'pubDate', 'link', 'content:encoded']
-  }
-})
 
 export async function GET() {
   try {
-    // Using OpenAI's blog URL directly
-    const response = await fetch('https://openai.com/blog')
+    // Using OpenAI's newer blog structure
+    const response = await fetch('https://openai.com/blog', {
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    })
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    
     const html = await response.text()
-
-    // Extract the latest blog posts from the HTML
-    const posts = extractBlogPosts(html)
+    
+    // Extract blog posts using a more specific pattern
+    const posts = []
+    const articlePattern = /<a[^>]*href="\/blog\/([^"]*)"[^>]*>.*?<h2[^>]*>([^<]*)<\/h2>.*?<p[^>]*>([^<]*)<\/p>/gs
+    
+    let match
+    while ((match = articlePattern.exec(html)) !== null) {
+      const [_, slug, title, description] = match
+      if (slug && title && description) {
+        posts.push({
+          title: title.trim(),
+          content: description.trim(),
+          source_url: `https://openai.com/blog/${slug}`,
+          published_at: new Date().toISOString(),
+          author: 'OpenAI',
+          type: 'blog' as const
+        })
+      }
+    }
 
     if (posts.length === 0) {
       console.error('No blog posts found')
       return NextResponse.json({ error: 'No updates available' }, { status: 404 })
     }
 
-    const updates = posts.map(post => ({
-      title: post.title,
-      content: post.description,
-      source_url: `https://openai.com${post.url}`,
-      published_at: post.date || new Date().toISOString(),
-      author: 'OpenAI',
-      type: 'blog' as const
-    }))
-
-    return NextResponse.json({ updates })
+    return NextResponse.json({ updates: posts })
   } catch (error) {
     console.error('Error fetching OpenAI updates:', error)
     return NextResponse.json({ 
@@ -38,35 +48,4 @@ export async function GET() {
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
-}
-
-function extractBlogPosts(html: string) {
-  const posts: Array<{
-    title: string
-    description: string
-    url: string
-    date?: string
-  }> = []
-
-  try {
-    // Extract blog posts using regex patterns
-    const blogPattern = /<article[^>]*>.*?<h2[^>]*>(.*?)<\/h2>.*?<p[^>]*>(.*?)<\/p>.*?<a[^>]*href="([^"]*)".*?<\/article>/gs
-    const matches = html.matchAll(blogPattern)
-
-    for (const match of matches) {
-      const [_, title, description, url] = match
-      if (title && description && url) {
-        posts.push({
-          title: title.replace(/<[^>]*>/g, '').trim(),
-          description: description.replace(/<[^>]*>/g, '').trim(),
-          url: url.trim(),
-          date: new Date().toISOString() // Using current date as fallback
-        })
-      }
-    }
-  } catch (error) {
-    console.error('Error parsing blog posts:', error)
-  }
-
-  return posts
 } 
