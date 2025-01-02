@@ -7,12 +7,22 @@ const parser = new Parser({
   }
 });
 
-function cleanHtmlContent(html: string): string {
-  // Remove HTML tags
-  const textContent = html.replace(/<[^>]+>/g, ' ')
-    // Replace multiple spaces/newlines with single space
-    .replace(/\s+/g, ' ')
-    // Remove special characters and extra whitespace
+function cleanHtmlContent(html: string | object | undefined): string {
+  if (!html) return '';
+  
+  // If html is an object, try to extract text content
+  if (typeof html === 'object') {
+    try {
+      return cleanHtmlContent(JSON.stringify(html));
+    } catch {
+      return '';
+    }
+  }
+
+  // Convert to string and clean
+  const textContent = String(html)
+    .replace(/<[^>]+>/g, ' ') // Remove HTML tags
+    .replace(/\s+/g, ' ') // Replace multiple spaces/newlines with single space
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
@@ -24,22 +34,35 @@ function cleanHtmlContent(html: string): string {
   return preview + (textContent.length > 300 ? '...' : '');
 }
 
+function ensureString(value: any): string {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object') {
+    try {
+      return String(value.title || value.name || value.text || JSON.stringify(value));
+    } catch {
+      return '';
+    }
+  }
+  return String(value);
+}
+
 export async function GET() {
   try {
     const feed = await parser.parseURL('https://community.openai.com/c/announcements.rss');
     
     const updates = feed.items.map(item => {
       // Get the full content from either content:encoded or description
-      const fullContent = (item['content:encoded'] || item.description || item.content || '').toString();
+      const fullContent = item['content:encoded'] || item.description || item.content;
       
       return {
-        title: item.title || '',
+        title: ensureString(item.title),
         description: cleanHtmlContent(fullContent),
-        url: item.link || '',
-        published_at: item.pubDate || item.isoDate || new Date().toISOString(),
-        author: item.creator || 'OpenAI'
+        url: ensureString(item.link),
+        published_at: ensureString(item.pubDate || item.isoDate || new Date().toISOString()),
+        author: ensureString(item.creator || 'OpenAI')
       };
-    });
+    }).filter(update => update.title && update.description); // Only include updates with valid title and description
 
     // Sort by date, most recent first
     const sortedUpdates = updates.sort((a, b) => {
