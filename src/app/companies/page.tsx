@@ -3,6 +3,7 @@
 import { useAuth } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import CompanyLogo from '@/components/CompanyLogo'
 
 interface CompanyUpdate {
   title: string
@@ -113,9 +114,7 @@ const CompaniesPage = () => {
                     }`}
                   >
                     <div className="flex items-center space-x-3">
-                      <div className="w-6 h-6 rounded-full bg-[color:var(--hover)] flex items-center justify-center text-sm">
-                        {company.logo}
-                      </div>
+                      <CompanyLogo company={company.name} size={24} />
                       <span>{company.name}</span>
                     </div>
                   </button>
@@ -141,13 +140,11 @@ const CompaniesPage = () => {
                     className="p-4 bg-[color:var(--sidebar)] rounded-lg border border-[color:var(--border)]"
                   >
                     <div className="flex items-center space-x-3 mb-2">
-                      <div className="w-8 h-8 rounded-full bg-[color:var(--hover)] flex items-center justify-center text-sm">
-                        G
-                      </div>
+                      <CompanyLogo company={selectedCompany || 'Google'} size={32} />
                       <div>
                         <h3 className="font-medium">{update.title}</h3>
                         <p className="text-sm text-[color:var(--text-secondary)]">
-                          Google • {new Date(update.published_at).toLocaleDateString()} • {update.author}
+                          {selectedCompany || 'Google'} • {new Date(update.published_at).toLocaleDateString()} • {update.author}
                         </p>
                       </div>
                     </div>
