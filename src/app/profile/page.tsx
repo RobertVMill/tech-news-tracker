@@ -29,6 +29,7 @@ const Profile = () => {
     content: '',
     reference_list: [] as Reference[]
   })
+  const [newReference, setNewReference] = useState({ url: '', content: '' })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null)
 
@@ -67,6 +68,23 @@ const Profile = () => {
     }
   }
 
+  const handleAddReference = () => {
+    if (newReference.url || newReference.content) {
+      setNewArticle({
+        ...newArticle,
+        reference_list: [...newArticle.reference_list, { ...newReference }]
+      })
+      setNewReference({ url: '', content: '' })
+    }
+  }
+
+  const handleRemoveReference = (index: number) => {
+    setNewArticle({
+      ...newArticle,
+      reference_list: newArticle.reference_list.filter((_, i) => i !== index)
+    })
+  }
+
   const handleSubmitArticle = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -78,6 +96,7 @@ const Profile = () => {
           {
             title: newArticle.title,
             content: newArticle.content,
+            reference_list: newArticle.reference_list,
             user_id: user?.id,
           },
         ])
@@ -85,6 +104,7 @@ const Profile = () => {
       if (error) throw error
 
       setNewArticle({ title: '', content: '', reference_list: [] })
+      setNewReference({ url: '', content: '' })
       setShowNewArticle(false)
       fetchArticles()
     } catch (error) {
@@ -169,6 +189,72 @@ const Profile = () => {
                     required
                   />
                 </div>
+
+                {/* References Section */}
+                <div className="space-y-4">
+                  <div className="border border-[color:var(--border)] rounded-md p-4">
+                    <h3 className="text-sm font-medium mb-3">Add References</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <input
+                          type="url"
+                          placeholder="Reference URL"
+                          value={newReference.url}
+                          onChange={(e) => setNewReference({ ...newReference, url: e.target.value })}
+                          className="w-full p-2 border border-[color:var(--border)] rounded-md bg-[color:var(--background)]"
+                        />
+                      </div>
+                      <div>
+                        <textarea
+                          placeholder="Reference content or description..."
+                          value={newReference.content}
+                          onChange={(e) => setNewReference({ ...newReference, content: e.target.value })}
+                          className="w-full h-20 p-2 border border-[color:var(--border)] rounded-md bg-[color:var(--background)]"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddReference}
+                        className="notion-like-button w-full"
+                      >
+                        Add Reference
+                      </button>
+                    </div>
+
+                    {newArticle.reference_list.length > 0 && (
+                      <div className="mt-4 space-y-3">
+                        <h4 className="text-sm font-medium">Added References:</h4>
+                        {newArticle.reference_list.map((ref, index) => (
+                          <div key={index} className="flex items-start space-x-2 p-2 border border-[color:var(--border)] rounded-md">
+                            <div className="flex-1">
+                              {ref.url && (
+                                <a
+                                  href={ref.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm text-blue-400 hover:underline break-all"
+                                >
+                                  {ref.url}
+                                </a>
+                              )}
+                              {ref.content && (
+                                <p className="text-sm mt-1">{ref.content}</p>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveReference(index)}
+                              className="text-red-400 hover:text-red-500"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div className="flex space-x-2">
                   <button
                     type="submit"
