@@ -1,18 +1,6 @@
 import Parser from 'rss-parser'
 import { NextResponse } from 'next/server'
 
-// Define the extended Item type with our custom fields
-interface CustomItem extends Parser.Item {
-  creator?: string;
-  author?: string;
-  description?: string;
-  contentSnippet?: string;
-  content?: string;
-  pubDate?: string;
-  isoDate?: string;
-  link?: string;
-}
-
 const parser = new Parser({
   customFields: {
     item: ['description', 'pubDate', 'link', 'creator', 'author', 'contentSnippet', 'content']
@@ -29,7 +17,7 @@ export async function GET() {
       return NextResponse.json({ error: 'No updates available' }, { status: 404 })
     }
 
-    const updates = (feed.items as CustomItem[]).map(item => {
+    const updates = feed.items.map(item => {
       // Log the item structure to debug
       console.log('Processing feed item:', JSON.stringify(item, null, 2))
 
@@ -38,7 +26,7 @@ export async function GET() {
         content: item.contentSnippet || item.description || item.content || '',
         source_url: item.link || '',
         published_at: item.pubDate || item.isoDate || new Date().toISOString(),
-        author: item.creator || item.author || 'AWS',
+        author: (item as any).creator || (item as any).author || 'AWS',
         type: 'blog' as const
       }
     }).filter(item => item.title && item.content) // Only include items with title and content

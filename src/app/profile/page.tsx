@@ -5,12 +5,18 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
+interface Reference {
+  url: string;
+  content: string;
+}
+
 interface Article {
-  id: string
-  title: string
-  content: string
-  created_at: string
-  user_id: string
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  user_id: string;
+  reference_list?: Reference[];
 }
 
 const Profile = () => {
@@ -20,6 +26,7 @@ const Profile = () => {
   const [showNewArticle, setShowNewArticle] = useState(false)
   const [newArticle, setNewArticle] = useState({ title: '', content: '' })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -81,6 +88,10 @@ const Profile = () => {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleArticleClick = (article: Article) => {
+    setSelectedArticle(article)
   }
 
   if (loading) {
@@ -180,7 +191,8 @@ const Profile = () => {
                 articles.map((article) => (
                   <div
                     key={article.id}
-                    className="p-4 border border-[color:var(--border)] rounded-md hover:bg-[color:var(--hover)] transition-colors"
+                    onClick={() => handleArticleClick(article)}
+                    className="p-4 border border-[color:var(--border)] rounded-md hover:bg-[color:var(--hover)] transition-colors cursor-pointer"
                   >
                     <div className="flex items-center space-x-3 mb-2">
                       <div className="w-8 h-8 rounded-full bg-[color:var(--hover)] flex items-center justify-center text-sm">
@@ -201,6 +213,92 @@ const Profile = () => {
           </div>
         </div>
       </main>
+
+      {/* Article Modal */}
+      {selectedArticle && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-[color:var(--background)] rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-[color:var(--background)] p-6 border-b border-[color:var(--border)] flex justify-between items-start">
+              <div>
+                <h2 className="text-2xl font-semibold">{selectedArticle.title}</h2>
+                <p className="text-sm text-[color:var(--text-secondary)] mt-1">
+                  {new Date(selectedArticle.created_at).toLocaleDateString()}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedArticle(null)}
+                className="text-[color:var(--text-secondary)] hover:text-[color:var(--text)] p-1"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Main Content */}
+                <div className="lg:col-span-2 space-y-6">
+                  <div className="bg-[color:var(--sidebar)] rounded-lg p-6">
+                    <h3 className="text-lg font-medium mb-4">Article Content</h3>
+                    <div className="prose prose-invert max-w-none">
+                      <div className="whitespace-pre-wrap">{selectedArticle.content}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* References Sidebar */}
+                <div className="lg:col-span-1">
+                  <div className="sticky top-24">
+                    {selectedArticle.reference_list && selectedArticle.reference_list.length > 0 ? (
+                      <div className="bg-[color:var(--sidebar)] rounded-lg p-6">
+                        <div className="flex items-center mb-4">
+                          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                          </svg>
+                          <h3 className="text-lg font-medium">References</h3>
+                          <span className="ml-2 px-2 py-0.5 bg-[color:var(--hover)] rounded-full text-xs">
+                            {selectedArticle.reference_list.length}
+                          </span>
+                        </div>
+                        <div className="space-y-4">
+                          {selectedArticle.reference_list.map((ref: Reference, index: number) => (
+                            <div key={index} className="border border-[color:var(--border)] rounded-lg p-4">
+                              {ref.url && (
+                                <div className="mb-3">
+                                  <label className="text-xs text-[color:var(--text-secondary)] block mb-1">URL</label>
+                                  <a
+                                    href={ref.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-400 hover:underline break-all text-sm block"
+                                  >
+                                    {ref.url}
+                                  </a>
+                                </div>
+                              )}
+                              {ref.content && (
+                                <div>
+                                  <label className="text-xs text-[color:var(--text-secondary)] block mb-1">Content</label>
+                                  <div className="text-sm whitespace-pre-wrap">
+                                    {ref.content}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-[color:var(--sidebar)] rounded-lg p-6 text-center text-[color:var(--text-secondary)]">
+                        No references available
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
