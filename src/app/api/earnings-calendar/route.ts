@@ -77,6 +77,30 @@ async function fetchEarningsData(horizon: string) {
   return data
 }
 
+// List of major tech companies we want to track
+const TECH_COMPANIES = new Set([
+  'AAPL',  // Apple
+  'MSFT',  // Microsoft
+  'GOOGL', // Alphabet (Google)
+  'GOOG',  // Alphabet (Google)
+  'AMZN',  // Amazon
+  'META',  // Meta (Facebook)
+  'NVDA',  // NVIDIA
+  'TSLA',  // Tesla
+  'TSM',   // Taiwan Semiconductor
+  'AVGO',  // Broadcom
+  'ORCL',  // Oracle
+  'CSCO',  // Cisco
+  'CRM',   // Salesforce
+  'ADBE',  // Adobe
+  'INTC',  // Intel
+  'AMD',   // AMD
+  'QCOM',  // Qualcomm
+  'IBM',   // IBM
+  'NOW',   // ServiceNow
+  'UBER',  // Uber
+]);
+
 export async function GET() {
   try {
     // Get upcoming earnings (next 3 months)
@@ -98,7 +122,7 @@ export async function GET() {
 
     const now = new Date()
     const upcoming = upcomingData
-      .filter(call => new Date(call.reportDate) >= now)
+      .filter(call => new Date(call.reportDate) >= now && TECH_COMPANIES.has(call.symbol))
       .map(formatEarningsCall)
     
     const recent = upcomingData
@@ -106,7 +130,7 @@ export async function GET() {
         const reportDate = new Date(call.reportDate)
         const sevenDaysAgo = new Date(now)
         sevenDaysAgo.setDate(now.getDate() - 7)
-        return reportDate < now && reportDate >= sevenDaysAgo
+        return reportDate < now && reportDate >= sevenDaysAgo && TECH_COMPANIES.has(call.symbol)
       })
       .map(formatEarningsCall)
 
