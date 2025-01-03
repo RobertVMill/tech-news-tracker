@@ -1,82 +1,103 @@
 import { NextResponse } from 'next/server'
 
-// Interface for earnings call data
-interface EarningsCall {
+interface AlphaVantageEarningsCall {
+  symbol: string
+  name: string
+  reportDate: string
+  fiscalDateEnding: string
+  estimate: string
+  currency: string
+}
+
+interface FormattedEarningsCall {
   company: string
   date: string
-  time: string // 'Pre-market' | 'After-hours'
+  time: string
   fiscalQuarter: string
   fiscalYear: string
-  expectedRevenue?: string
   expectedEPS?: string
   callLink?: string
 }
 
-// Mock data - In a real app, this would come from a financial data API
-const mockEarningsCalls: EarningsCall[] = [
-  {
-    company: 'Apple Inc.',
-    date: '2024-05-02',
-    time: 'After-hours',
-    fiscalQuarter: 'Q2',
-    fiscalYear: '2024',
-    expectedRevenue: '$96.5B',
-    expectedEPS: '$1.51',
-    callLink: 'https://investor.apple.com'
-  },
-  {
-    company: 'Microsoft',
-    date: '2024-04-25',
-    time: 'After-hours',
-    fiscalQuarter: 'Q3',
-    fiscalYear: '2024',
-    expectedRevenue: '$60.8B',
-    expectedEPS: '$2.23',
-    callLink: 'https://microsoft.com/investors'
-  },
-  {
-    company: 'Meta',
-    date: '2024-04-24',
-    time: 'After-hours',
-    fiscalQuarter: 'Q1',
-    fiscalYear: '2024',
-    expectedRevenue: '$36.2B',
-    expectedEPS: '$4.32',
-    callLink: 'https://investor.fb.com'
-  },
-  {
-    company: 'Alphabet',
-    date: '2024-04-30',
-    time: 'After-hours',
-    fiscalQuarter: 'Q1',
-    fiscalYear: '2024',
-    expectedRevenue: '$78.1B',
-    expectedEPS: '$1.51',
-    callLink: 'https://abc.xyz/investor'
-  },
-  {
-    company: 'Amazon',
-    date: '2024-04-30',
-    time: 'After-hours',
-    fiscalQuarter: 'Q1',
-    fiscalYear: '2024',
-    expectedRevenue: '$142.5B',
-    expectedEPS: '$0.83',
-    callLink: 'https://ir.aboutamazon.com'
+function getFiscalQuarter(date: string): { quarter: string; year: string } {
+  const earningsDate = new Date(date)
+  const month = earningsDate.getMonth()
+  const year = earningsDate.getFullYear()
+  
+  // Determine fiscal quarter based on month
+  let quarter
+  if (month <= 2) quarter = 'Q1'
+  else if (month <= 5) quarter = 'Q2'
+  else if (month <= 8) quarter = 'Q3'
+  else quarter = 'Q4'
+  
+  return { quarter, year: year.toString() }
+}
+
+async function fetchEarningsData(horizon: string) {
+  const apiKey = process.env.ALPHA_VANTAGE_API_KEY
+  if (!apiKey) {
+    throw new Error('Alpha Vantage API key is not configured')
   }
-]
+
+  const response = await fetch(
+    `https://www.alphavantage.co/query?function=EARNINGS_CALENDAR&horizon=${horizon}&apikey=${apiKey}`
+  )
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch data from Alpha Vantage')
+  }
+
+  // The response is CSV, so we need to parse it
+  const text = await response.text()
+  const lines = text.split('\n')
+  const headers = lines[0].split(',')
+  
+  const data: AlphaVantageEarningsCall[] = lines.slice(1)
+    .filter(line => line.trim()) // Remove empty lines
+    .map(line => {
+      const values = line.split(',')
+      return headers.reduce((obj: any, header, index) => {
+        obj[header] = values[index]
+        return obj
+      }, {})
+    })
+
+  return data
+}
 
 export async function GET() {
   try {
-    // Sort earnings calls by date
-    const sortedCalls = [...mockEarningsCalls].sort((a, b) => {
-      return new Date(a.date).getTime() - new Date(b.date).getTime()
-    })
+    // Get upcoming earnings (next 3 months)
+    const upcomingData = await fetchEarningsData('3month')
+    
+    // Format the earnings calls
+    const formatEarningsCall = (call: AlphaVantageEarningsCall): FormattedEarningsCall => {
+      const { quarter, year } = getFiscalQuarter(call.fiscalDateEnding)
+      return {
+        company: `${call.name} (${call.symbol})`,
+        date: call.reportDate,
+        time: 'TBA', // Alpha Vantage doesn't provide the exact time
+        fiscalQuarter: quarter,
+        fiscalYear: year,
+        expectedEPS: call.estimate ? `$${Number(call.estimate).toFixed(2)}` : undefined,
+        callLink: `https://www.marketwatch.com/investing/stock/${call.symbol}`
+      }
+    }
 
-    // Split into upcoming and recent calls
     const now = new Date()
-    const upcoming = sortedCalls.filter(call => new Date(call.date) >= now)
-    const recent = sortedCalls.filter(call => new Date(call.date) < now)
+    const upcoming = upcomingData
+      .filter(call => new Date(call.reportDate) >= now)
+      .map(formatEarningsCall)
+    
+    const recent = upcomingData
+      .filter(call => {
+        const reportDate = new Date(call.reportDate)
+        const sevenDaysAgo = new Date(now)
+        sevenDaysAgo.setDate(now.getDate() - 7)
+        return reportDate < now && reportDate >= sevenDaysAgo
+      })
+      .map(formatEarningsCall)
 
     return NextResponse.json({
       upcoming,
