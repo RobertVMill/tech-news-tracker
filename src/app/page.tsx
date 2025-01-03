@@ -96,6 +96,12 @@ const Home = () => {
             >
               Sources
             </button>
+            <button
+              onClick={() => router.push('/earnings')}
+              className="notion-like-button"
+            >
+              Earnings Calendar
+            </button>
           </nav>
         </div>
         <div className="relative">
