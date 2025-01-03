@@ -24,7 +24,11 @@ const Profile = () => {
   const router = useRouter()
   const [articles, setArticles] = useState<Article[]>([])
   const [showNewArticle, setShowNewArticle] = useState(false)
-  const [newArticle, setNewArticle] = useState({ title: '', content: '' })
+  const [newArticle, setNewArticle] = useState({ 
+    title: '', 
+    content: '',
+    reference_list: [] as Reference[]
+  })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null)
 
@@ -80,7 +84,7 @@ const Profile = () => {
 
       if (error) throw error
 
-      setNewArticle({ title: '', content: '' })
+      setNewArticle({ title: '', content: '', reference_list: [] })
       setShowNewArticle(false)
       fetchArticles()
     } catch (error) {
