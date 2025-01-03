@@ -10,6 +10,14 @@ interface Reference {
   content: string;
 }
 
+interface Profile {
+  first_name: string;
+  last_name: string;
+  job_position: string;
+  location: string;
+  bio: string;
+}
+
 interface Article {
   id: string;
   title: string;
@@ -32,6 +40,15 @@ const Profile = () => {
   const [newReference, setNewReference] = useState({ url: '', content: '' })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null)
+  const [isEditingProfile, setIsEditingProfile] = useState(false)
+  const [profileData, setProfileData] = useState<Profile>({
+    first_name: '',
+    last_name: '',
+    job_position: '',
+    location: '',
+    bio: ''
+  })
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -41,6 +58,7 @@ const Profile = () => {
 
   useEffect(() => {
     if (user) {
+      fetchProfile()
       fetchArticles()
     }
   }, [user])
@@ -65,6 +83,81 @@ const Profile = () => {
       setArticles(data || [])
     } catch (error) {
       console.error('Error fetching articles:', error)
+    }
+  }
+
+  const fetchProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user?.id)
+        .single()
+
+      if (error) {
+        // If no profile exists, create one
+        if (error.code === 'PGRST116') {
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert([
+              {
+                id: user?.id,
+                first_name: '',
+                last_name: '',
+                job_position: '',
+                location: '',
+                bio: ''
+              }
+            ])
+            .select()
+            .single()
+
+          if (insertError) throw insertError
+          
+          // After creating, set empty profile data
+          setProfileData({
+            first_name: '',
+            last_name: '',
+            job_position: '',
+            location: '',
+            bio: ''
+          })
+          return
+        }
+        throw error
+      }
+
+      if (data) {
+        setProfileData({
+          first_name: data.first_name || '',
+          last_name: data.last_name || '',
+          job_position: data.job_position || '',
+          location: data.location || '',
+          bio: data.bio || ''
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error)
+    }
+  }
+
+  const handleUpdateProfile = async () => {
+    setIsUpdatingProfile(true)
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user?.id,
+          ...profileData,
+          updated_at: new Date().toISOString()
+        })
+
+      if (error) throw error
+      setIsEditingProfile(false)
+    } catch (error) {
+      console.error('Error updating profile:', error)
+    } finally {
+      setIsUpdatingProfile(false)
     }
   }
 
@@ -142,19 +235,109 @@ const Profile = () => {
       <main className="notion-like-container py-8">
         <div className="space-y-8">
           <div className="bg-[color:var(--sidebar)] p-6 rounded-lg border border-[color:var(--border)]">
-            <h2 className="text-xl font-semibold mb-4">Account Information</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm text-[color:var(--text-secondary)]">Email</label>
-                <div className="mt-1">{user?.email}</div>
-              </div>
-              <div>
-                <label className="text-sm text-[color:var(--text-secondary)]">Account Created</label>
-                <div className="mt-1">
-                  {user?.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Account Information</h2>
+              <button
+                onClick={() => setIsEditingProfile(!isEditingProfile)}
+                className="notion-like-button"
+              >
+                {isEditingProfile ? 'Cancel' : 'Edit Profile'}
+              </button>
+            </div>
+
+            {isEditingProfile ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm text-[color:var(--text-secondary)]">First Name</label>
+                    <input
+                      type="text"
+                      value={profileData.first_name}
+                      onChange={(e) => setProfileData({ ...profileData, first_name: e.target.value })}
+                      className="w-full mt-1 p-2 border border-[color:var(--border)] rounded-md bg-[color:var(--background)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-[color:var(--text-secondary)]">Last Name</label>
+                    <input
+                      type="text"
+                      value={profileData.last_name}
+                      onChange={(e) => setProfileData({ ...profileData, last_name: e.target.value })}
+                      className="w-full mt-1 p-2 border border-[color:var(--border)] rounded-md bg-[color:var(--background)]"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm text-[color:var(--text-secondary)]">Job Position</label>
+                  <input
+                    type="text"
+                    value={profileData.job_position}
+                    onChange={(e) => setProfileData({ ...profileData, job_position: e.target.value })}
+                    className="w-full mt-1 p-2 border border-[color:var(--border)] rounded-md bg-[color:var(--background)]"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-[color:var(--text-secondary)]">Location</label>
+                  <input
+                    type="text"
+                    value={profileData.location}
+                    onChange={(e) => setProfileData({ ...profileData, location: e.target.value })}
+                    className="w-full mt-1 p-2 border border-[color:var(--border)] rounded-md bg-[color:var(--background)]"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-[color:var(--text-secondary)]">Bio</label>
+                  <textarea
+                    value={profileData.bio}
+                    onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
+                    className="w-full mt-1 p-2 border border-[color:var(--border)] rounded-md bg-[color:var(--background)] h-24"
+                    placeholder="Tell us about yourself..."
+                  />
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <button
+                    onClick={handleUpdateProfile}
+                    disabled={isUpdatingProfile}
+                    className="notion-like-button notion-like-button-primary"
+                  >
+                    {isUpdatingProfile ? 'Saving...' : 'Save Changes'}
+                  </button>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm text-[color:var(--text-secondary)]">Email</label>
+                  <div className="mt-1">{user?.email}</div>
+                </div>
+                <div>
+                  <label className="text-sm text-[color:var(--text-secondary)]">Name</label>
+                  <div className="mt-1">
+                    {profileData.first_name || profileData.last_name 
+                      ? `${profileData.first_name} ${profileData.last_name}`.trim()
+                      : '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm text-[color:var(--text-secondary)]">Job Position</label>
+                  <div className="mt-1">{profileData.job_position || '-'}</div>
+                </div>
+                <div>
+                  <label className="text-sm text-[color:var(--text-secondary)]">Location</label>
+                  <div className="mt-1">{profileData.location || '-'}</div>
+                </div>
+                <div>
+                  <label className="text-sm text-[color:var(--text-secondary)]">Bio</label>
+                  <div className="mt-1 whitespace-pre-wrap">{profileData.bio || '-'}</div>
+                </div>
+                <div>
+                  <label className="text-sm text-[color:var(--text-secondary)]">Account Created</label>
+                  <div className="mt-1">
+                    {user?.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="bg-[color:var(--sidebar)] p-6 rounded-lg border border-[color:var(--border)]">
