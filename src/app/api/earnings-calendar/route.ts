@@ -19,6 +19,17 @@ interface FormattedEarningsCall {
   callLink?: string
 }
 
+// Interface for CSV parsing
+interface EarningsRecord {
+  symbol: string
+  name: string
+  reportDate: string
+  fiscalDateEnding: string
+  estimate: string
+  currency: string
+  [key: string]: string // For any additional fields in the CSV
+}
+
 function getFiscalQuarter(date: string): { quarter: string; year: string } {
   const earningsDate = new Date(date)
   const month = earningsDate.getMonth()
@@ -57,10 +68,10 @@ async function fetchEarningsData(horizon: string) {
     .filter(line => line.trim()) // Remove empty lines
     .map(line => {
       const values = line.split(',')
-      return headers.reduce((obj: any, header, index) => {
-        obj[header] = values[index]
+      return headers.reduce<EarningsRecord>((obj, header, index) => {
+        obj[header] = values[index] || ''
         return obj
-      }, {})
+      }, {} as EarningsRecord)
     })
 
   return data
